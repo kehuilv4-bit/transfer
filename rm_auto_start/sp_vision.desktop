@@ -1,0 +1,4 @@
+[Desktop Entry]
+Type=Application
+Name=SP Vision
+Exec=gnome-terminal --working-directory=/home/qiqi/sp_vision_25_for_infantry_test -- bash -c "./build/standard_mpc; bash"
