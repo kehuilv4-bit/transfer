@@ -65,6 +65,7 @@ private:
   void update_ypda(const Armor & armor, int id);  // yaw pitch distance angle
   void lock_outpost_rotation_direction();
   void initialize_outpost_height(const Armor & armor, int id);
+  void enforce_outpost_radius();
   void clamp_outpost_height_offsets();
   double association_error(const Armor & armor, const Eigen::Vector4d & xyza, int id) const;
 

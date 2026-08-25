@@ -10,6 +10,7 @@ namespace auto_aim
 {
 namespace
 {
+constexpr double OUTPOST_RADIUS = 0.2765;                // m
 constexpr double OUTPOST_ROTATION_SPEED = 0.8 * CV_PI;  // 0.4 r/s
 constexpr double OUTPOST_DIRECTION_THRESHOLD = 2.0;     // rad/s
 constexpr double OUTPOST_HEIGHT_ERROR_SCALE = 0.10;     // m
@@ -34,7 +35,8 @@ Target::Target(
   outpost_rotation_direction_(0),
   switch_count_(0)
 {
-  auto r = radius;
+  const bool is_outpost = name == ArmorName::outpost && armor_num_ == 3;
+  auto r = is_outpost ? OUTPOST_RADIUS : radius;
   priority = armor.priority;
   const Eigen::VectorXd & xyz = armor.xyz_in_world;
   const Eigen::VectorXd & ypr = armor.ypr_in_world;
@@ -65,6 +67,8 @@ Target::Target(
   };
 
   ekf_ = tools::ExtendedKalmanFilter(x0, P0, x_add);  //初始化滤波器（预测量、预测量协方差）
+
+  enforce_outpost_radius();
 }
 
 Target::Target(double x, double vyaw, double radius, double h)
@@ -150,6 +154,8 @@ void Target::predict(double dt)
   }
 
   ekf_.predict(F, Q, f);
+
+  enforce_outpost_radius();
 }
 
 void Target::update(const Armor & armor)
@@ -200,6 +206,7 @@ void Target::update(const Armor & armor)
 
   initialize_outpost_height(armor, id);
   update_ypda(armor, id);
+  enforce_outpost_radius();
   clamp_outpost_height_offsets();
   lock_outpost_rotation_direction();
 }
@@ -249,6 +256,15 @@ void Target::clamp_outpost_height_offsets()
       std::abs(ekf_.x[state_index]), OUTPOST_HEIGHT_MIN, OUTPOST_HEIGHT_MAX);
     ekf_.x[state_index] = sign * magnitude;
   }
+}
+
+void Target::enforce_outpost_radius()
+{
+  if (name != ArmorName::outpost || armor_num_ != 3) return;
+
+  ekf_.x[8] = OUTPOST_RADIUS;
+  ekf_.P.row(8).setZero();
+  ekf_.P.col(8).setZero();
 }
 
 void Target::update_ypda(const Armor & armor, int id)

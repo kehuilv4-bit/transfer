@@ -249,7 +249,7 @@ bool Tracker::set_target(std::list<Armor> & armors, std::chrono::steady_clock::t
 
   else if (armor.name == ArmorName::outpost) {
     // l/h are the two unknown armor height offsets relative to the first observed armor.
-    Eigen::VectorXd P0_dig{{1, 64, 1, 64, 1, 81, 0.4, 100, 1e-4, 4e-2, 4e-2}};
+    Eigen::VectorXd P0_dig{{1, 64, 1, 64, 1, 81, 0.4, 100, 0, 4e-2, 4e-2}};
     target_ = Target(armor, t, 0.2765, 3, P0_dig, v1_, v2_);
   }
 
