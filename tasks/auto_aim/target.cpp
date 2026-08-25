@@ -14,7 +14,7 @@ constexpr double OUTPOST_RADIUS = 0.2765;                // m
 constexpr double OUTPOST_ROTATION_SPEED = 0.8 * CV_PI;  // 0.4 r/s
 constexpr double OUTPOST_DIRECTION_THRESHOLD = 2.0;     // rad/s
 constexpr double OUTPOST_HEIGHT_ERROR_SCALE = 0.10;     // m
-constexpr double OUTPOST_HEIGHT_MIN = 0.09;              // m
+constexpr double OUTPOST_HEIGHT_MIN = 0;              // m
 constexpr double OUTPOST_HEIGHT_MAX = 0.21;              // m
 }  // namespace
 
@@ -341,7 +341,7 @@ bool Target::convergened()
   }
 
   //前哨站特殊判断
-  if (this->name == ArmorName::outpost && update_count_ > 10 && !this->diverged()) {
+  if (this->name == ArmorName::outpost && update_count_ > 20 && !this->diverged()) {
     is_converged_ = true;
   }
 
