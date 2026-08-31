@@ -22,6 +22,9 @@ private:
   cv::dnn::Net net_;
   ov::Core core_;
   ov::CompiledModel compiled_model_;
+  int input_size_;
+  bool use_softmax_;
+  ArmorName label_to_name(int label_id) const;
 };
 
 }  // namespace auto_aim

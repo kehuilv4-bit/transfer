@@ -39,7 +39,7 @@ std::list<Armor> Detector::detect(const cv::Mat & bgr_img, int frame_count)
   // 进行二值化
   cv::Mat binary_img;
   cv::threshold(gray_img, binary_img, threshold_, 255, cv::THRESH_BINARY);
-  cv::imshow("binary_img", binary_img);
+  //cv::imshow("binary_img", binary_img);
 
   // 获取轮廓点
   std::vector<std::vector<cv::Point>> contours;
@@ -63,17 +63,46 @@ std::list<Armor> Detector::detect(const cv::Mat & bgr_img, int frame_count)
   lightbars.sort([](const Lightbar & a, const Lightbar & b) { return a.center.x < b.center.x; });
 
   // 获取装甲板
+  int pair_count = 0;
+  int color_reject_count = 0;
+  int geometry_reject_count = 0;
+  int name_reject_count = 0;
+  std::vector<std::string> debug_rejects;
   std::list<Armor> armors;
   for (auto left = lightbars.begin(); left != lightbars.end(); left++) {
     for (auto right = std::next(left); right != lightbars.end(); right++) {
-      if (left->color != right->color) continue;
+      pair_count++;
+      if (left->color != right->color) {
+        color_reject_count++;
+        continue;
+      }
 
       auto armor = Armor(*left, *right);
-      if (!check_geometry(armor)) continue;
+      if (!check_geometry(armor)) {
+        if (debug_ && frame_count % 30 == 0 && debug_rejects.size() < 5) {
+          debug_rejects.emplace_back(fmt::format(
+            "geo(ratio={:.2f}, side={:.2f}, rect={:.1f})", armor.ratio, armor.side_ratio,
+            armor.rectangular_error * 57.3));
+        }
+        geometry_reject_count++;
+        continue;
+      }
 
       armor.pattern = get_pattern(bgr_img, armor);
       classifier_.classify(armor);
-      if (!check_name(armor)) continue;
+      if (!check_name(armor)) {
+        if (debug_ && frame_count % 30 == 0 && debug_rejects.size() < 5) {
+          debug_rejects.emplace_back(fmt::format(
+            "cls(name={}, conf={:.2f}, ratio={:.2f})", ARMOR_NAMES[armor.name],
+            armor.confidence, armor.ratio));
+          auto img_path = fmt::format(
+            "{}/reject_cls_{}_conf{:.2f}_frame{}.jpg", save_path_, ARMOR_NAMES[armor.name],
+            armor.confidence, frame_count);
+          cv::imwrite(img_path, armor.pattern);
+        }
+        name_reject_count++;
+        continue;
+      }
 
       armor.type = get_type(armor);
       if (!check_type(armor)) continue;
@@ -113,6 +142,17 @@ std::list<Armor> Detector::detect(const cv::Mat & bgr_img, int frame_count)
   }
 
   armors.remove_if([&](const Armor & a) { return a.duplicated; });
+
+  if (debug_ && frame_count % 30 == 0) {
+    tools::logger()->info(
+      "[Detector] frame={} lightbars={} pairs={} reject(color={}, geometry={}, name/conf={}) "
+      "armors={}",
+      frame_count, lightbars.size(), pair_count, color_reject_count, geometry_reject_count,
+      name_reject_count, armors.size());
+    for (const auto & reject : debug_rejects) {
+      tools::logger()->info("[Detector] reject {}", reject);
+    }
+  }
 
   if (debug_) show_result(binary_img, bgr_img, lightbars, armors, frame_count);
 
@@ -280,16 +320,29 @@ Color Detector::get_color(const cv::Mat & bgr_img, const std::vector<cv::Point> 
 
 cv::Mat Detector::get_pattern(const cv::Mat & bgr_img, const Armor & armor) const
 {
-  // 将灯条角点构成的四边形拉正，统一交给数字分类器。
+  // RPS26 lenet classifier expects the binarized number ROI, not the whole armor patch.
   if (armor.points.size() != 4) return {};
 
-  const std::vector<cv::Point2f> dst{{0.f, 0.f}, {64.f, 0.f},
-                                     {64.f, 32.f}, {0.f, 32.f}};
-  auto transform = cv::getPerspectiveTransform(armor.points, dst);
+  std::vector<cv::Point2f> src{
+    armor.left.bottom, armor.left.top, armor.right.top, armor.right.bottom};
+
+  constexpr int light_length = 12;
+  constexpr int warp_height = 28;
+  constexpr int warp_width = 32;
+  const cv::Size roi_size(20, 28);
+  const int top_light_y = (warp_height - light_length) / 2 - 1;
+  const int bottom_light_y = top_light_y + light_length;
+
+  std::vector<cv::Point2f> dst{
+    cv::Point2f(0, bottom_light_y), cv::Point2f(0, top_light_y),
+    cv::Point2f(warp_width - 1, top_light_y), cv::Point2f(warp_width - 1, bottom_light_y)};
+  auto transform = cv::getPerspectiveTransform(src, dst);
   cv::Mat pattern;
-  cv::warpPerspective(
-    bgr_img, pattern, transform, cv::Size(64, 32), cv::INTER_LINEAR,
-    cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
+  cv::warpPerspective(bgr_img, pattern, transform, cv::Size(warp_width, warp_height));
+
+  pattern = pattern(cv::Rect(cv::Point((warp_width - roi_size.width) / 2, 0), roi_size));
+  cv::cvtColor(pattern, pattern, cv::COLOR_BGR2GRAY);
+  cv::threshold(pattern, pattern, 0, 255, cv::THRESH_BINARY | cv::THRESH_OTSU);
   return pattern;
 }
 
