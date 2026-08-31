@@ -12,7 +12,7 @@
 #include "io/usbcamera/usbcamera.hpp"
 #include "tasks/auto_aim/armor.hpp"
 #include "tasks/auto_aim/target.hpp"
-#include "tasks/auto_aim/yolo.hpp"
+#include "tasks/auto_aim/detector.hpp"
 
 namespace omniperception
 {
@@ -22,11 +22,11 @@ public:
   Decider(const std::string & config_path);
 
   io::Command decide(
-    auto_aim::YOLO & yolo, const Eigen::Vector3d & gimbal_pos, io::USBCamera & usbcam1,
+    auto_aim::Detector & detector, const Eigen::Vector3d & gimbal_pos, io::USBCamera & usbcam1,
     io::USBCamera & usbcam2, io::Camera & back_cammera);
 
   io::Command decide(
-    auto_aim::YOLO & yolo, const Eigen::Vector3d & gimbal_pos, io::Camera & back_cammera);
+    auto_aim::Detector & detector, const Eigen::Vector3d & gimbal_pos, io::Camera & back_cammera);
 
   io::Command decide(const std::vector<DetectionResult> & detection_queue);
 
@@ -56,7 +56,7 @@ private:
   int count_;
 
   auto_aim::Color enemy_color_;
-  auto_aim::YOLO detector_;
+  auto_aim::Detector detector_;
   std::vector<auto_aim::ArmorName> invincible_armor_;  //无敌状态机器人编号,英雄为1，哨兵为6
 
   // 定义ArmorName到ArmorPriority的映射类型

@@ -3,19 +3,10 @@
 
 #include <opencv2/opencv.hpp>
 
-#include "armor.hpp"
+#include "detector.hpp"
 
 namespace auto_aim
 {
-class YOLOBase
-{
-public:
-  virtual std::list<Armor> detect(const cv::Mat & img, int frame_count) = 0;
-
-  virtual std::list<Armor> postprocess(
-    double scale, cv::Mat & output, const cv::Mat & bgr_img, int frame_count) = 0;
-};
-
 class YOLO
 {
 public:
@@ -23,11 +14,8 @@ public:
 
   std::list<Armor> detect(const cv::Mat & img, int frame_count = -1);
 
-  std::list<Armor> postprocess(
-    double scale, cv::Mat & output, const cv::Mat & bgr_img, int frame_count);
-
 private:
-  std::unique_ptr<YOLOBase> yolo_;
+  Detector detector_;
 };
 
 }  // namespace auto_aim

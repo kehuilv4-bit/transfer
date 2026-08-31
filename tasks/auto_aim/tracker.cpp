@@ -238,9 +238,7 @@ bool Tracker::set_target(std::list<Armor> & armors, std::chrono::steady_clock::t
   solver_.solve(armor);
 
   // 根据兵种优化初始化参数
-  auto is_balance = (armor.type == ArmorType::big) &&
-                    (armor.name == ArmorName::three || armor.name == ArmorName::four ||
-                     armor.name == ArmorName::five);
+  auto is_balance = false;
 
   if (is_balance) {
     Eigen::VectorXd P0_dig{{1, 64, 1, 64, 1, 64, 0.4, 100, 1, 1, 1}};

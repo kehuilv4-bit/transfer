@@ -17,10 +17,6 @@ add_library(auto_aim OBJECT
     voter.cpp
     shooter.cpp
     yolo.cpp
-    yolos/at_nn.cpp
-    yolos/yolov5.cpp
-    yolos/yolov8.cpp
-    yolos/yolo11.cpp
     multithread/commandgener.cpp
     multithread/mt_detector.cpp
     planner/planner.cpp

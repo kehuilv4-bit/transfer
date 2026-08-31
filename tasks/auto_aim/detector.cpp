@@ -262,18 +262,8 @@ bool Detector::check_name(const Armor & armor) const
 
 bool Detector::check_type(const Armor & armor) const
 {
-  auto name_ok = armor.type == ArmorType::small
-                   ? (armor.name != ArmorName::one && armor.name != ArmorName::base)
-                   : (armor.name == ArmorName::one || armor.name == ArmorName::base);
-
-  // 保存异常的图案，用于分类器的迭代
-  if (!name_ok) {
-    tools::logger()->debug(
-      "see strange armor: {} {}", ARMOR_TYPES[armor.type], ARMOR_NAMES[armor.name]);
-    save(armor);
-  }
-
-  return name_ok;
+  (void)armor;
+  return true;
 }
 
 Color Detector::get_color(const cv::Mat & bgr_img, const std::vector<cv::Point> & contour) const
@@ -290,50 +280,22 @@ Color Detector::get_color(const cv::Mat & bgr_img, const std::vector<cv::Point> 
 
 cv::Mat Detector::get_pattern(const cv::Mat & bgr_img, const Armor & armor) const
 {
-  // 延长灯条获得装甲板角点
-  // 1.125 = 0.5 * armor_height / lightbar_length = 0.5 * 126mm / 56mm
-  auto tl = armor.left.center - armor.left.top2bottom * 1.125;
-  auto bl = armor.left.center + armor.left.top2bottom * 1.125;
-  auto tr = armor.right.center - armor.right.top2bottom * 1.125;
-  auto br = armor.right.center + armor.right.top2bottom * 1.125;
+  // 将灯条角点构成的四边形拉正，统一交给数字分类器。
+  if (armor.points.size() != 4) return {};
 
-  auto roi_left = std::max<int>(std::min(tl.x, bl.x), 0);
-  auto roi_top = std::max<int>(std::min(tl.y, tr.y), 0);
-  auto roi_right = std::min<int>(std::max(tr.x, br.x), bgr_img.cols);
-  auto roi_bottom = std::min<int>(std::max(bl.y, br.y), bgr_img.rows);
-  auto roi_tl = cv::Point(roi_left, roi_top);
-  auto roi_br = cv::Point(roi_right, roi_bottom);
-  auto roi = cv::Rect(roi_tl, roi_br);
-
-  return bgr_img(roi);
+  const std::vector<cv::Point2f> dst{{0.f, 0.f}, {64.f, 0.f},
+                                     {64.f, 32.f}, {0.f, 32.f}};
+  auto transform = cv::getPerspectiveTransform(armor.points, dst);
+  cv::Mat pattern;
+  cv::warpPerspective(
+    bgr_img, pattern, transform, cv::Size(64, 32), cv::INTER_LINEAR,
+    cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
+  return pattern;
 }
 
 ArmorType Detector::get_type(const Armor & armor)
 {
-  /// 优先根据当前armor.ratio判断
-  /// TODO: 25赛季是否还需要根据比例判断大小装甲？能否根据图案直接判断？
-
-  if (armor.ratio > 3.0) {
-    // tools::logger()->debug(
-    //   "[Detector] get armor type by ratio: BIG {} {:.2f}", ARMOR_NAMES[armor.name], armor.ratio);
-    return ArmorType::big;
-  }
-
-  if (armor.ratio < 2.5) {
-    // tools::logger()->debug(
-    //   "[Detector] get armor type by ratio: SMALL {} {:.2f}", ARMOR_NAMES[armor.name], armor.ratio);
-    return ArmorType::small;
-  }
-
-  // tools::logger()->debug("[Detector] get armor type by name: {}", ARMOR_NAMES[armor.name]);
-
-  // 英雄、基地只能是大装甲板
-  if (armor.name == ArmorName::one || armor.name == ArmorName::base) {
-    return ArmorType::big;
-  }
-
-  // 其他所有（工程、哨兵、前哨站、步兵）都是小装甲板
-  /// TODO: 基地顶装甲是小装甲板
+  (void)armor;
   return ArmorType::small;
 }
 

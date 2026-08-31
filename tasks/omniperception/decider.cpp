@@ -25,7 +25,7 @@ Decider::Decider(const std::string & config_path) : detector_(config_path), coun
 }
 
 io::Command Decider::decide(
-  auto_aim::YOLO & yolo, const Eigen::Vector3d & gimbal_pos, io::USBCamera & usbcam1,
+  auto_aim::Detector & detector, const Eigen::Vector3d & gimbal_pos, io::USBCamera & usbcam1,
   io::USBCamera & usbcam2, io::Camera & back_camera)
 {
   Eigen::Vector2d delta_angle;
@@ -41,7 +41,7 @@ io::Command Decider::decide(
   } else {
     cams[count_]->read(usb_img, timestamp);
   }
-  auto armors = yolo.detect(usb_img);
+  auto armors = detector.detect(usb_img);
   auto empty = armor_filter(armors);
 
   if (!empty) {
@@ -69,12 +69,12 @@ io::Command Decider::decide(
 }
 
 io::Command Decider::decide(
-  auto_aim::YOLO & yolo, const Eigen::Vector3d & gimbal_pos, io::Camera & back_cammera)
+  auto_aim::Detector & detector, const Eigen::Vector3d & gimbal_pos, io::Camera & back_cammera)
 {
   cv::Mat img;
   std::chrono::steady_clock::time_point timestamp;
   back_cammera.read(img, timestamp);
-  auto armors = yolo.detect(img);
+  auto armors = detector.detect(img);
   auto empty = armor_filter(armors);
 
   if (!empty) {

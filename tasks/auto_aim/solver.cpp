@@ -54,8 +54,7 @@ void Solver::set_R_gimbal2world(const Eigen::Quaterniond & q)
 //solvePnP（获得姿态）
 void Solver::solve(Armor & armor) const
 {
-  const auto & object_points =
-    (armor.type == ArmorType::big) ? BIG_ARMOR_POINTS : SMALL_ARMOR_POINTS;
+  const auto & object_points = SMALL_ARMOR_POINTS;
 
   cv::Vec3d rvec, tvec;
   cv::solvePnP(
@@ -79,9 +78,7 @@ void Solver::solve(Armor & armor) const
   armor.ypd_in_world = tools::xyz2ypd(armor.xyz_in_world);
 
   // 平衡不做yaw优化，因为pitch假设不成立
-  auto is_balance = (armor.type == ArmorType::big) &&
-                    (armor.name == ArmorName::three || armor.name == ArmorName::four ||
-                     armor.name == ArmorName::five);
+  auto is_balance = false;
   if (is_balance) return;
 
   optimize_yaw(armor);
@@ -121,7 +118,7 @@ std::vector<cv::Point2f> Solver::reproject_armor(
 
   // reproject
   std::vector<cv::Point2f> image_points;
-  const auto & object_points = (type == ArmorType::big) ? BIG_ARMOR_POINTS : SMALL_ARMOR_POINTS;
+  const auto & object_points = SMALL_ARMOR_POINTS;
   cv::projectPoints(object_points, rvec, tvec, camera_matrix_, distort_coeffs_, image_points);
   return image_points;
 }
@@ -129,8 +126,7 @@ std::vector<cv::Point2f> Solver::reproject_armor(
 double Solver::oupost_reprojection_error(Armor armor, const double & pitch)
 {
   // solve
-  const auto & object_points =
-    (armor.type == ArmorType::big) ? BIG_ARMOR_POINTS : SMALL_ARMOR_POINTS;
+  const auto & object_points = SMALL_ARMOR_POINTS;
 
   cv::Vec3d rvec, tvec;
   cv::solvePnP(

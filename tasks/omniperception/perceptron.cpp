@@ -4,7 +4,7 @@
 #include <memory>
 #include <thread>
 
-#include "tasks/auto_aim/yolo.hpp"
+#include "tasks/auto_aim/detector.hpp"
 #include "tools/exiter.hpp"
 #include "tools/logger.hpp"
 
@@ -15,18 +15,17 @@ Perceptron::Perceptron(
   io::USBCamera * usbcam4, const std::string & config_path)
 : detection_queue_(10), decider_(config_path), stop_flag_(false)
 {
-  // 初始化 YOLO 模型
-  yolo_parallel1_ = std::make_shared<auto_aim::YOLO>(config_path, false);
-  yolo_parallel2_ = std::make_shared<auto_aim::YOLO>(config_path, false);
-  yolo_parallel3_ = std::make_shared<auto_aim::YOLO>(config_path, false);
-  yolo_parallel4_ = std::make_shared<auto_aim::YOLO>(config_path, false);
+  detector_parallel1_ = std::make_shared<auto_aim::Detector>(config_path, false);
+  detector_parallel2_ = std::make_shared<auto_aim::Detector>(config_path, false);
+  detector_parallel3_ = std::make_shared<auto_aim::Detector>(config_path, false);
+  detector_parallel4_ = std::make_shared<auto_aim::Detector>(config_path, false);
 
   std::this_thread::sleep_for(std::chrono::seconds(2));
   // 创建四个线程进行并行推理
-  threads_.emplace_back([&] { parallel_infer(usbcam1, yolo_parallel1_); });
-  threads_.emplace_back([&] { parallel_infer(usbcam2, yolo_parallel2_); });
-  threads_.emplace_back([&] { parallel_infer(usbcam3, yolo_parallel3_); });
-  threads_.emplace_back([&] { parallel_infer(usbcam4, yolo_parallel4_); });
+  threads_.emplace_back([&] { parallel_infer(usbcam1, detector_parallel1_); });
+  threads_.emplace_back([&] { parallel_infer(usbcam2, detector_parallel2_); });
+  threads_.emplace_back([&] { parallel_infer(usbcam3, detector_parallel3_); });
+  threads_.emplace_back([&] { parallel_infer(usbcam4, detector_parallel4_); });
 
   tools::logger()->info("Perceptron initialized.");
 }
@@ -64,7 +63,7 @@ std::vector<DetectionResult> Perceptron::get_detection_queue()
 
 // 将并行推理逻辑移动到类成员函数
 void Perceptron::parallel_infer(
-  io::USBCamera * cam, std::shared_ptr<auto_aim::YOLO> & yolov8_parallel)
+  io::USBCamera * cam, std::shared_ptr<auto_aim::Detector> & detector)
 {
   if (!cam) {
     tools::logger()->error("Camera pointer is null!");
@@ -86,7 +85,7 @@ void Perceptron::parallel_infer(
         continue;
       }
 
-      auto armors = yolov8_parallel->detect(usb_img);
+      auto armors = detector->detect(usb_img);
       if (!armors.empty()) {
         auto delta_angle = decider_.delta_angle(armors, cam->device_name);
 
